@@ -141,6 +141,7 @@ class NormApp : public NormController, public ProtoApp
         char*               address;        // session address
         UINT16              port;           // session port number
         UINT16              tx_port;
+        bool                tx_only;
         UINT8               ttl;
         bool                loopback;
         char*               interface_name; // for multi-home hosts
@@ -235,7 +236,7 @@ NormApp::NormApp()
    msg_test(false), msg_test_length(0), msg_test_seq(0),
    output_index(0), output_messaging(false), output_msg_length(0), output_msg_sync(false),
    precise(false), boost(false),
-   address(NULL), port(0), ttl(32), loopback(false), interface_name(NULL),
+   address(NULL), port(0), tx_only(false), ttl(32), loopback(false), interface_name(NULL),
    tx_rate(64000.0), tx_rate_min(-1.0), tx_rate_max(-1.0), 
    cc_enable(false), ecn_mode(ECN_OFF), tolerate_loss(false),
    node_id(NORM_NODE_ANY), segment_size(1024), ndata(32), nparity(16), auto_parity(0), extra_parity(0),
@@ -327,6 +328,7 @@ const char* const NormApp::cmd_list[] =
     "+rxloss",       // rx packet loss percent (for testing)
     "+address",      // session destination address/port
     "+txport",       // use specific transmission source port number 
+    "-txonly",       // only open tx socket - do not open rx socket
     "+ttl",          // multicast hop count scope
     "+loopback",     // "off" or "on" to recv our own packets
     "+interface",    // multicast interface name to use
@@ -641,6 +643,11 @@ bool NormApp::OnCommand(const char* cmd, const char* val)
         }
         tx_port = (UINT16)txPort;
         if (session) session->SetTxPort(txPort);
+    }
+    else if (!strncmp("txonly", cmd, len))
+    {
+        tx_only = true;
+        if (session) session->SetTxOnly(tx_only, false);
     }
     else if (!strncmp("ttl", cmd, len))
     {
@@ -2312,6 +2319,7 @@ bool NormApp::OnStartup(int argc, const char*const* argv)
         session->SetRxLoss(rx_loss);
         session->SetTTL(ttl);
         session->SetLoopback(loopback);
+        session->SetTxOnly(tx_only, false);
         if (loopback && session->Address().IsMulticast())
             session->SetRxPortReuse(true);
         if (NULL != interface_name)
